@@ -1,0 +1,17 @@
+subject: Test email
+from: test@example.com
+content-type: multipart/mixed; boundary="xxxxxx"
+
+this text should be ignored
+
+--xxxxxx
+
+content-type: text/plain
+
+Hello World
+--xxxxxx
+content-type: text/html
+
+<h1>Heading 1</h1>
+
+<p>Paragraph</p>
