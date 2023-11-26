@@ -1,14 +1,19 @@
-import { AB_CR_LF, AB_LF, CHAR_EM } from '../consts';
-import { concat, compare, decode, encode, readLine } from '../helpers';
-import { getHeader, parseHeaders, parseHeaderValueParams } from '../headers';
-import { getBodyDecoder } from '../';
-import type { IHeader } from '../headers';
-import type { IParseOptions, TBodyDecoder } from '../';
+import { getHeader, parseHeaders, parseHeaderValueParams } from '@cryptella/utils/headers';
+import { AB_CR_LF, AB_LF, CHAR_EM } from '../consts.js';
+import { concat, compare, decode, encode, readLine } from '../helpers.js';
+import { getBodyDecoder } from '../index.js';
+import type { IHeader } from '@cryptella/utils/headers';
+import type { IParseOptions, TBodyDecoder } from '../index.js';
+
+export interface IMultipartDecoderOptions {
+  deep?: boolean;
+}
 
 function parseMultipartBody(
   options: IParseOptions,
+  decoderOptions: IMultipartDecoderOptions,
   boundary: Uint8Array,
-  onPart: (headers: IHeader[], body: Uint8Array) => Promise<void>
+  onPart: (parsedHeaders: IHeader[], body: Uint8Array, headers: Uint8Array) => Promise<void> | void
 ) {
   let headers = new Uint8Array();
   let body = new Uint8Array();
@@ -22,7 +27,7 @@ function parseMultipartBody(
     let lastPos = 0;
     if (chunk === null) {
       if (parsedHeaders.length) {
-        await onPart(parsedHeaders, body);
+        await onPart(parsedHeaders, body, headers);
       }
       return;
     }
@@ -48,9 +53,9 @@ function parseMultipartBody(
         }
         if (parsedHeaders.length && readingBody) {
           if (decoder) {
-            decoder(null);
+            await decoder(null);
           }
-          await onPart(parsedHeaders, body);
+          await onPart(parsedHeaders, body, headers);
         }
         parsedHeaders = [];
         readingBody = false;
@@ -58,16 +63,20 @@ function parseMultipartBody(
         body = new Uint8Array();
       } else if (line.length === 0 && headers.length && !readingBody) {
         parsedHeaders = parseHeaders(decode(headers));
-        if (options.decoders) {
-          decoder = getBodyDecoder(parsedHeaders, options);
-        }
-        const contentType = getHeader(parsedHeaders, 'content-type');
-        if (contentType?.value.startsWith('multipart/')) {
-          const { params } = parseHeaderValueParams(contentType.value);
-          if (params?.boundary) {
-            prevBoundaries.push(boundary);
-            boundary = encode(params.boundary);
+        if (decoderOptions?.deep !== false) {
+          if (options.decoders) {
+            decoder = getBodyDecoder(parsedHeaders, options);
           }
+          const contentType = getHeader(parsedHeaders, 'content-type');
+          if (contentType?.value.startsWith('multipart/')) {
+            const { params } = parseHeaderValueParams(contentType.value);
+            if (params?.boundary) {
+              prevBoundaries.push(boundary);
+              boundary = encode(params.boundary);
+            }
+          }
+        } else {
+          body = concat(body, cr ? AB_CR_LF : AB_LF);
         }
         readingBody = true;
       } else if (readingBody) {
@@ -87,7 +96,8 @@ function parseMultipartBody(
 }
 
 export function multipartDecoder(
-  onPart: (headers: IHeader[], body: Uint8Array) => void
+  onPart: (parsedHeaders: IHeader[], body: Uint8Array, headers: Uint8Array) => Promise<void> | void,
+  decoderOptions: IMultipartDecoderOptions = {},
 ) {
   return (headers: IHeader[], options: IParseOptions) => {
     const contentType = getHeader(headers, 'content-type');
@@ -95,10 +105,9 @@ export function multipartDecoder(
       const { params } = parseHeaderValueParams(contentType.value);
       return parseMultipartBody(
         options,
+        decoderOptions,
         encode(params!.boundary!),
-        async (h, b) => {
-          onPart(h, b);
-        }
+        onPart,
       );
     }
     return null;

@@ -1,17 +1,17 @@
-import { encode } from './helpers';
-import { serializeHeaders } from './headers';
-import type { IHeader } from './headers';
+import { encode } from './helpers.js';
+import { serializeHeaders } from '@cryptella/utils/headers';
+import type { IHeader } from '@cryptella/utils/headers';
 
 export type TMultiPart = {
-  headers: IHeader[];
-  body: string | Uint8Array | ReadableStream;
+  headers?: IHeader[];
+  body: string | Blob | Uint8Array | ReadableStream;
 };
 
 export type TBodyEncoder = (
   chunk: Uint8Array | TMultiPart | null
 ) => (Uint8Array | ReadableStream | TMultiPart | null)[];
 
-export type TBody = string | Uint8Array | ReadableStream | TMultiPart[];
+export type TBody = string | Blob | Uint8Array | ReadableStream | TMultiPart[];
 
 export interface ISerializeOptions {
   body: TBody;
@@ -20,7 +20,7 @@ export interface ISerializeOptions {
     headers: IHeader[],
     options: ISerializeOptions
   ) => TBodyEncoder | null)[];
-  headers: IHeader[];
+  headers?: IHeader[];
 }
 
 export function getBodyEncoder(headers: IHeader[], options: ISerializeOptions) {
@@ -86,23 +86,25 @@ async function encodeStream(
       } else if (chunk && 'headers' in chunk) {
         // TODO:
       } else if (chunk !== null) {
-        output.enqueue(chunk);
+        output.enqueue(chunk as any);
       }
     }
   }
 }
 
 export function serialize(options: ISerializeOptions): ReadableStream {
-  const encoder = getBodyEncoder(options.headers, options);
+  const encoder = getBodyEncoder(options.headers || [], options);
   return new ReadableStream({
     start(ctrl) {
-      ctrl.enqueue(
-        encode(
-          serializeHeaders(options.headers, options.crlf) +
-            (options.crlf ? '\r' : '') +
-            '\n'
-        )
-      );
+      if (options.headers) {
+        ctrl.enqueue(
+          encode(
+            serializeHeaders(options.headers, options.crlf) +
+              (options.crlf ? '\r' : '') +
+              '\n'
+          )
+        );
+      }
       encodeStream(bodyToStream(options.body), ctrl, encoder).then(() => {
         ctrl.close();
       });

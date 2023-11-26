@@ -1,9 +1,10 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
-import { encode, decode } from '../lib/helpers';
-import { parse } from '../lib/parser';
-import { base64DecoderStream } from '../lib/decoders/base64.decoder';
-import { multipartDecoder } from '../lib/decoders/multipart.decoder';
-import type { IHeader } from '../lib/headers';
+import { describe, expect, it, beforeEach } from '@jest/globals';
+import { encode, decode } from '../lib/helpers.js';
+import { parse } from '../lib/parser.js';
+import { base64DecoderStream } from '../lib/decoders/base64.decoder.js';
+import { multipartDecoder } from '../lib/decoders/multipart.decoder.js';
+import { getStream } from './utils.js';
+import type { IHeader } from '@cryptella/utils/headers';
 
 describe('Eml', () => {
 
@@ -24,18 +25,40 @@ describe('Eml', () => {
       expect(decode(result.body)).toEqual('Hello World\n\nEnd of message.');
     });
 
+    it('should parse basic non-multipart eml with configured decoders', async () => {
+      const eml = `subject: test\ncontent-type: text/plain\n\nHello World\n\nEnd of message.`;
+      const stream = new Blob([encode(eml)]).stream();
+      const result = await parse(stream, {
+        decoders: [
+          multipartDecoder(async () => {
+            // noop
+          }),
+        ],
+      });
+      expect(result.headers).toEqual([{
+        name: 'subject',
+        params: null,
+        value: 'test',
+      }, {
+        name: 'content-type',
+        params: null,
+        value: 'text/plain',
+      }]);
+      expect(decode(result.body)).toEqual('Hello World\n\nEnd of message.');
+    });
+
     describe('Basic multipart', () => {
       let stream: ReadableStream;
 
       beforeEach(() => {
-        stream = Bun.file('./fixtures/sample-multipart-simple.eml').stream();
+        stream = getStream('./fixtures/sample-multipart-simple.eml');
       });
 
       it('should read multipart body', async () => {
         const parts: { headers: IHeader[], body: string }[] = [];
         const result = await parse(stream, {
           decoders: [
-            multipartDecoder((headers: IHeader[], body: Uint8Array) => {
+            multipartDecoder(async (headers: IHeader[], body: Uint8Array) => {
               parts.push({ headers, body: decode(body) });
             }),
           ],
@@ -73,19 +96,18 @@ describe('Eml', () => {
       let stream: ReadableStream;
 
       beforeEach(() => {
-        stream = Bun.file('./fixtures/sample-multipart-attachments.eml').stream();
+        stream = getStream('./fixtures/sample-multipart-attachments.eml');
       });
 
       it('should read multipart', async () => {
-        const attachments: { headers: IHeader[], body: string }[] = []
+        const attachments: { headers: IHeader[], body: ReadableStream }[] = []
         const parts: { headers: IHeader[], body: string }[] = [];
         const result = await parse(stream, {
           decoders: [
-            base64DecoderStream(async (headers: IHeader[], body) => {
-              const str = await Bun.readableStreamToText(body);
-              attachments.push({ headers, body: str });
+            base64DecoderStream((headers: IHeader[], body) => {
+              attachments.push({ headers, body });
             }),
-            multipartDecoder((headers: IHeader[], body: Uint8Array) => {
+            multipartDecoder(async (headers: IHeader[], body: Uint8Array) => {
               parts.push({ headers, body: decode(body) });
             }),
           ],
@@ -94,8 +116,8 @@ describe('Eml', () => {
         expect(result.body.length).toEqual(0);
         expect(parts.length).toEqual(3);
         expect(attachments.length).toEqual(2);
-        expect(attachments[0].body).toBeTruthy();
-        expect(attachments[1].body).toBeTruthy();
+        expect(attachments[0].body).toBeInstanceOf(ReadableStream);
+        expect(attachments[1].body).toBeInstanceOf(ReadableStream);
       });
     });
 
@@ -103,14 +125,14 @@ describe('Eml', () => {
       let stream: ReadableStream;
 
       beforeEach(() => {
-        stream = Bun.file('./fixtures/sample-multipart-related.eml').stream();
+        stream = getStream('./fixtures/sample-multipart-related.eml');
       });
 
       it('should read multipart body with nested boundaries (multipart/related; multipart/alternative)', async () => {
         const parts: { headers: IHeader[], body: string }[] = [];
         const result = await parse(stream, {
           decoders: [
-            multipartDecoder((headers: IHeader[], body: Uint8Array) => {
+            multipartDecoder(async (headers: IHeader[], body: Uint8Array) => {
               parts.push({ headers, body: decode(body) });
             }),
           ],
@@ -121,7 +143,7 @@ describe('Eml', () => {
         expect(parts[0].body.length).toEqual(0);
         expect(parts[1].body.length).toEqual(0);
         expect(parts[2].body).toEqual('This is an HTML message. Please use an HTML capable mail program to read\nthis message.\n');
-        expect(parts[3].body).toStartWith('<html>');
+        expect(parts[3].body).toContain('<html>');
       });
     });
 
@@ -130,14 +152,14 @@ describe('Eml', () => {
       let stream: ReadableStream;
 
       beforeEach(() => {
-        stream = Bun.file('./fixtures/sample-multipart-large.eml').stream();
+        stream = getStream('./fixtures/sample-multipart-large.eml');
       });
 
       it('should read large multipart body', async () => {
         const parts: { headers: IHeader[], body: string }[] = [];
         const result = await parse(stream, {
           decoders: [
-            multipartDecoder((headers: IHeader[], body: Uint8Array) => {
+            multipartDecoder(async (headers: IHeader[], body: Uint8Array) => {
               parts.push({ headers, body: decode(body) });
             }),
           ],

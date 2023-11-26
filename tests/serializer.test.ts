@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'bun:test';
-import { serialize } from '../lib/serializer';
-import { multipartEncoder } from '../lib/encoders/multipart.encoder';
-import { base64Encoder } from '../lib/encoders/base64.encoder';
+import { describe, expect, it } from '@jest/globals';
+import { decode } from '../lib/helpers.js';
+import { serialize } from '../lib/serializer.js';
+import { multipartEncoder } from '../lib/encoders/multipart.encoder.js';
+import { base64Encoder } from '../lib/encoders/base64.encoder.js';
+import { getStream, streamToUint8Array } from './utils.js';
 
 describe('Serializer', () => {
   it('should return a stream and serialize a simple eml', async () => {
@@ -18,7 +20,7 @@ describe('Serializer', () => {
       }],
     });
     expect(stream).toBeInstanceOf(ReadableStream);
-    expect(await Bun.readableStreamToText(stream)).toEqual([
+    expect(decode(await streamToUint8Array(stream))).toEqual([
       'subject: Hello',
       'content-type: text/plain',
       '',
@@ -41,7 +43,7 @@ describe('Serializer', () => {
       }],
     });
     expect(stream).toBeInstanceOf(ReadableStream);
-    expect(await Bun.readableStreamToText(stream)).toEqual([
+    expect(decode(await streamToUint8Array(stream))).toEqual([
       'subject: Hello',
       'content-type: text/plain',
       '',
@@ -79,7 +81,7 @@ describe('Serializer', () => {
             value: `multipart/mixed; boundary="${boundary}"`,
           }],
         });
-        expect(await Bun.readableStreamToText(stream)).toEqual([
+        expect(decode(await streamToUint8Array(stream))).toEqual([
           `content-type: multipart/mixed; boundary="${boundary}"`,
           '',
           '',
@@ -91,6 +93,7 @@ describe('Serializer', () => {
           'content-type: text/plain',
           '',
           'Part 2',
+          `--${boundary}--`,
         ].join('\n'));
       });
     });
@@ -110,7 +113,7 @@ describe('Serializer', () => {
             value: 'text/plain',
           }],
         });
-        expect(await Bun.readableStreamToText(stream)).toEqual([
+        expect(decode(await streamToUint8Array(stream))).toEqual([
           'content-type: text/plain',
           'content-transfer-encoding: base64',
           '',
@@ -147,7 +150,7 @@ describe('Serializer', () => {
             value: `multipart/mixed; boundary="${boundary}"`,
           }],
         });
-        expect(await Bun.readableStreamToText(stream)).toEqual([
+        expect(decode(await streamToUint8Array(stream))).toEqual([
           `content-type: multipart/mixed; boundary="${boundary}"`,
           '',
           '',
@@ -157,13 +160,14 @@ describe('Serializer', () => {
           'content-transfer-encoding: base64',
           '',
           btoa('Hello World'),
+          `--${boundary}--`,
         ].join('\n'))
       });
     });
   });
 
   it('should serialize a stream', async () => {
-    const stream = Bun.file('./fixtures/unicode.txt').stream();
+    const stream = getStream('./fixtures/unicode.txt');
     const result = await serialize({
       body: stream,
       headers: [{

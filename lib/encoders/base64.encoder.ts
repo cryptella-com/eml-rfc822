@@ -1,11 +1,11 @@
-import { getHeader } from '../headers';
-import { encodeBase64ArrayBuffer } from '../base64';
-import type { IHeader } from '../headers';
+import { getHeader } from '@cryptella/utils/headers';
+import { encodeBase64ArrayBuffer } from '../base64.js';
+import type { IHeader } from '@cryptella/utils/headers';
 import type {
   ISerializeOptions,
   TBodyEncoder,
   TMultiPart,
-} from '../serializer';
+} from '../serializer.js';
 
 export interface IBase64EncoderOptions {
   attachments?: boolean;

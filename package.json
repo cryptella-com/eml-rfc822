@@ -2,14 +2,22 @@
   "name": "@cryptella/eml-rfc822",
   "description": "EML/RFC822 parser and serializer.",
   "version": "0.0.1",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
   "author": {
     "name": "Daniel Regeci; BAU Software s.r.o.",
     "url": "https://bausw.com/"
   },
   "homepage": "https://github.com/cryptella-com/eml-rfc822",
+  "scripts": {
+    "build": "rimraf dist && tsc -p tsconfig.build.json",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cryptella-com/eml-rfc822"
+    "url": "git+https://github.com/cryptella-com/eml-rfc822.git"
   },
   "keywords": [
     "eml",
@@ -17,24 +25,57 @@
     "parser",
     "serializer"
   ],
-  "prettier": {
-    "printWidth": 80,
-    "semi": true,
-    "singleQuote": true,
-    "trailingComma": "es5"
-  },
-  "module": "lib/index.ts",
-  "type": "module",
   "files": [
-    "lib"
+    "dist"
   ],
-  "scripts": {
-    "build": "tsc"
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./parser": {
+      "types": "./dist/parser.d.ts",
+      "import": "./dist/parser.js"
+    },
+    "./serializer": {
+      "types": "./dist/serializer.d.ts",
+      "import": "./dist/serializer.js"
+    },
+    "./decoders": {
+      "types": "./dist/decoders/index.d.ts",
+      "import": "./dist/decoders/index.js"
+    },
+    "./encoders": {
+      "types": "./dist/encoders/index.d.ts",
+      "import": "./dist/encoders/index.js"
+    }
   },
-  "devDependencies": {
-    "bun-types": "latest"
+  "typesVersions": {
+    "*": {
+      "parser": [
+        "./dist/parser"
+      ],
+      "serializer": [
+        "./dist/serializer"
+      ],
+      "decoders": [
+        "./dist/decoders"
+      ],
+      "encoders": [
+        "./dist/encoders"
+      ]
+    }
+  },
+  "dependencies": {
+    "@cryptella/utils": "file:../utils"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "rimraf": "^5.0.5",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1"
   }
 }

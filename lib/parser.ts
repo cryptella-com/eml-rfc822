@@ -1,7 +1,7 @@
-import { AB_CR_LF, AB_LF } from './consts';
-import { concat, decode, readLine } from './helpers';
-import { parseHeaders } from './headers';
-import type { IHeader } from './headers';
+import { AB_CR_LF, AB_LF } from './consts.js';
+import { concat, decode, readLine } from './helpers.js';
+import { parseHeaders } from '@cryptella/utils/headers';
+import type { IHeader } from '@cryptella/utils/headers';
 
 export type TBodyDecoder = (chunk: Uint8Array | null) => Promise<void>;
 
@@ -11,6 +11,7 @@ export interface IParseOptions {
     options: IParseOptions
   ) => TBodyDecoder | null)[];
   onBodyChunk?: (chunk: Uint8Array | null) => Promise<void> | void;
+  onHeaders?: (headers: IHeader[]) => Promise<void> | void;
   readBody?: boolean;
 }
 
@@ -52,6 +53,9 @@ export async function parse(
       if (line.line.length === 0 && headers.length && !readingBody) {
         // end of headers
         parsedHeaders = parseHeaders(decode(headers));
+        if (options.onHeaders) {
+          await options.onHeaders(parsedHeaders);
+        }
         readingBody = true;
         if (options.readBody === false && !onBodyChunk && !decoder) {
           return false;
@@ -60,8 +64,8 @@ export async function parse(
           decoder = getBodyDecoder(parsedHeaders, options);
           if (decoder) {
             onBodyChunk = decoder;
+            break;
           }
-          break;
         }
         if (options.readBody === false) {
           break;
@@ -81,17 +85,25 @@ export async function parse(
       : null;
   };
   try {
-    for await (chunk of stream) {
-      tmp = concat(tmp, chunk);
-      const pos = await read();
-      if (pos === false) {
-        canceled = true;
-        await stream.cancel();
+    const reader = stream.getReader();
+    let done: boolean;
+    let value: Uint8Array | undefined;
+    while ({ done, value } = await reader.read()) {
+      if (done) {
         break;
       }
-      if (pos) {
-        offset = pos;
-        tmp = tmp.subarray(pos);
+      if (value) {
+        tmp = concat(tmp, value);
+        const pos = await read();
+        if (pos === false) {
+          canceled = true;
+          await stream.cancel();
+          break;
+        }
+        if (pos) {
+          offset = pos;
+          tmp = tmp.subarray(pos);
+        }
       }
     }
     if (!canceled) {

@@ -1,8 +1,8 @@
-import { getHeader } from '../headers';
-import { concat } from '../helpers';
-import { decodeBase64ArrayBuffer } from '../base64';
-import type { IHeader } from '../headers';
-import type { IParseOptions } from '../';
+import { getHeader } from '@cryptella/utils/headers';
+import { concat } from '../helpers.js';
+import { decodeBase64ArrayBuffer } from '../base64.js';
+import type { IHeader } from '@cryptella/utils/headers';
+import type { IParseOptions } from '../index.js';
 
 export function base64Decoder(
   onPart: (headers: IHeader[], body: Uint8Array) => void

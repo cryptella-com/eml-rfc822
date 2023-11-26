@@ -2,10 +2,10 @@ import path from 'node:path';
 import { base64Decoder } from '../lib/decoders/base64.decoder';
 import { multipartDecoder } from '../lib/decoders/multipart.decoder';
 import { parse } from '../lib/parser';
-import { benchmark } from './helpers';
+import { benchmark, getStream } from './helpers';
 
-const FIXTURE = path.resolve(import.meta.dir, '../fixtures/sample-multipart-attachments.eml');
-const FIXTURE_LARGE = path.resolve(import.meta.dir, '../fixtures/sample-multipart-large.eml');
+const FIXTURE = path.resolve(import.meta.url, '../fixtures/sample-multipart-attachments.eml');
+const FIXTURE_LARGE = path.resolve(import.meta.url, '../fixtures/sample-multipart-large.eml');
 
 await benchmark('Parser - simple', (bench) => {
   const str = 'content-type: text/plain\n\nHello World.';
@@ -29,7 +29,7 @@ await benchmark('Parser - fixture - no decoders', (bench) => {
       await parse(stream);
     }, {
       beforeEach() {
-        stream = Bun.file(FIXTURE).stream();
+        stream = getStream(FIXTURE);
       },
     });
 });
@@ -45,13 +45,13 @@ await benchmark('Parser - fixture - multipart + base64 decoders', (bench) => {
 
           }),
           multipartDecoder(() => {
-
+            
           }),
         ],
       });
     }, {
       beforeEach() {
-        stream = Bun.file(FIXTURE).stream();
+        stream = getStream(FIXTURE);
       },
     });
 });
@@ -75,7 +75,7 @@ await benchmark('Parser - fixture - large - multipart + base64 decoders', (bench
       });
     }, {
       beforeEach() {
-        stream = Bun.file(FIXTURE_LARGE).stream();
+        stream = getStream(FIXTURE_LARGE);
       },
     });
 });

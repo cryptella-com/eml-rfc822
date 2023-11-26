@@ -1,12 +1,12 @@
-import { getHeader, parseHeaderValueParams } from '../headers';
-import type { IHeader } from '../headers';
-import { encode } from '../helpers';
-import { serialize } from '../serializer';
+import { getHeader, parseHeaderValueParams } from '@cryptella/utils/headers';
+import type { IHeader } from '@cryptella/utils/headers';
+import { encode } from '../helpers.js';
+import { serialize } from '../serializer.js';
 import type {
   ISerializeOptions,
   TBodyEncoder,
   TMultiPart,
-} from '../serializer';
+} from '../serializer.js';
 
 function randomBoundary() {
   return Math.round(Math.random() * 1e14).toString(16);
@@ -27,7 +27,7 @@ export function multipartEncoder(): (
         contentType.params = { ...contentType.params, boundary };
       }
       return (chunk: Uint8Array | TMultiPart | null) => {
-        if (chunk && 'headers' in chunk) {
+        if (chunk && 'body' in chunk) {
           return [
             encode(`${nl}--${boundary}${nl}`),
             serialize({
@@ -36,6 +36,8 @@ export function multipartEncoder(): (
               ...chunk,
             }),
           ];
+        } else if (chunk === null) {
+          return [encode(`${nl}--${boundary}--`)];
         }
         return [];
       };

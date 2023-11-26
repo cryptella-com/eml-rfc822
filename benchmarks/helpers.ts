@@ -1,7 +1,13 @@
+import { createReadStream } from 'node:fs';
+import { Readable } from 'node:stream';
 import { Bench } from 'tinybench';
 
 const NAME_MAX_LEN = 40;
 const TEXT_DECODER = new TextDecoder();
+
+export function getStream(file: string) {
+  return Readable.toWeb(createReadStream(file)) as ReadableStream;
+}
 
 export async function benchmark(name: string, initFn: (bench: Bench) => void, duration: number = 500) {
   const bench = new Bench({

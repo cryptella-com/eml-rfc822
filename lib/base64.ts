@@ -1,5 +1,5 @@
-import { CHAR_EQ } from './consts';
-import { decode, encode } from './helpers';
+import { CHAR_EQ } from './consts.js';
+import { decode, encode } from './helpers.js';
 
 /**
  * Base64 decode based on https://github.com/niklasvh/base64-arraybuffer

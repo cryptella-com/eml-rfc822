@@ -1,4 +1,4 @@
-import { CHAR_CR, CHAR_LF } from './consts';
+import { CHAR_CR, CHAR_LF } from './consts.js';
 
 export function decode(ab: Uint8Array) {
   return new TextDecoder().decode(ab);

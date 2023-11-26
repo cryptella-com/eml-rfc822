@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
-import { compare, concat, decode, encode, readLine } from '../lib/helpers';
+import { describe, expect, it } from '@jest/globals';
+import { compare, concat, decode, encode, readLine } from '../lib/helpers.js';
 
 describe('Helpers', () => {
   describe('encode()', () => {
