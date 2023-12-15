@@ -1,8 +1,5 @@
 # @cryptella/eml-rfc822
 
-## Status
-
-__WORK IN PROGRESS__
 
 ## What
 
@@ -13,6 +10,43 @@ This package offers a streaming, high-performance parser and serializer for the 
 - Bun 1+
 - Node.js 16+
 - Modern browsers
+
+## Usage
+
+```js
+import { parse } from '@cryptella/eml-rfc822';
+
+const stream = new ReadableStream(); // get stream somehow...
+
+// `headers` is always an array IHeader[] ({ name: string; value: string; params?: Record<string, string> }[])
+// `body` is a ReadableStream<UInt8Array>
+
+const { headers, body } = await parse(stream, {
+  decoders: [
+    multipartDecoder(async (headers, body) => {
+      // consume nested parts here...
+    }),
+  ],
+});
+```
+
+Or use a simple `parseMultipart()` function that returns ArrayBuffers instead of streams and includes base64 decoder:
+
+```ts
+import { parseMultipart } from '@cryptella/eml-rfc822';
+
+const message: Multipart = await parseMultipart(stream);
+```
+
+```ts
+interface Multipart = {
+  boundary: string;
+  body: Uint8Array;
+  headers: IHeader[];
+  parts: Multipart[];
+  rawHeaders: Uint8Array;
+}
+```
 
 ## Sponsor
 

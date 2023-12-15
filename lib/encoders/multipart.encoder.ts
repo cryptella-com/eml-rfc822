@@ -1,5 +1,5 @@
-import { getHeader, parseHeaderValueParams } from '@cryptella/utils/headers';
-import type { IHeader } from '@cryptella/utils/headers';
+import { getHeader, parseHeaderValueParams } from '../headers.js';
+import type { IHeader } from '../headers.js';
 import { encode } from '../helpers.js';
 import { serialize } from '../serializer.js';
 import type {

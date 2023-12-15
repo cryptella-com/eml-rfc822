@@ -1,10 +1,10 @@
 import { describe, expect, it, beforeEach } from '@jest/globals';
 import { encode, decode } from '../lib/helpers.js';
-import { parse } from '../lib/parser.js';
+import { parse, parseMultipart } from '../lib/parser.js';
 import { base64DecoderStream } from '../lib/decoders/base64.decoder.js';
 import { multipartDecoder } from '../lib/decoders/multipart.decoder.js';
 import { getStream } from './utils.js';
-import type { IHeader } from '@cryptella/utils/headers';
+import type { IHeader } from '../lib/headers.js';
 
 describe('Eml', () => {
 
@@ -76,7 +76,7 @@ describe('Eml', () => {
           params: null,
           value: 'multipart/mixed; boundary="xxxxxx"',
         }]);
-        expect(result.body.length).toEqual(0);
+        expect(result.body.length).toBeGreaterThan(0);
         expect(parts[0].headers).toEqual([{
           name: 'content-type',
           params: null,
@@ -113,7 +113,7 @@ describe('Eml', () => {
           ],
         });
         expect(result.headers.length).toEqual(12);
-        expect(result.body.length).toEqual(0);
+        expect(result.body.length).toBeGreaterThan(0);
         expect(parts.length).toEqual(3);
         expect(attachments.length).toEqual(2);
         expect(attachments[0].body).toBeInstanceOf(ReadableStream);
@@ -132,18 +132,18 @@ describe('Eml', () => {
         const parts: { headers: IHeader[], body: string }[] = [];
         const result = await parse(stream, {
           decoders: [
-            multipartDecoder(async (headers: IHeader[], body: Uint8Array) => {
+            multipartDecoder(async (headers: IHeader[], body: Uint8Array, _, ctx) => {
               parts.push({ headers, body: decode(body) });
             }),
           ],
         });
         expect(result.headers.length).toEqual(11);
-        expect(result.body.length).toEqual(0);
+        expect(result.body.length).toBeGreaterThan(0);
         expect(parts.length).toEqual(7);
-        expect(parts[0].body.length).toEqual(0);
-        expect(parts[1].body.length).toEqual(0);
-        expect(parts[2].body).toEqual('This is an HTML message. Please use an HTML capable mail program to read\nthis message.\n');
-        expect(parts[3].body).toContain('<html>');
+        expect(parts[0].body.length).toBeGreaterThan(0);
+        expect(parts[1].body.length).toBeGreaterThan(0);
+        expect(parts[0].body).toEqual('This is an HTML message. Please use an HTML capable mail program to read\nthis message.\n');
+        expect(parts[1].body).toContain('<html>');
       });
     });
 
@@ -168,6 +168,25 @@ describe('Eml', () => {
         expect(result.body.length).toEqual(0);
         expect(parts.length).toEqual(6);
       });
+    });
+  });
+
+  describe('parseMultipart()', () => {
+    let stream: ReadableStream;
+
+    beforeEach(() => {
+      stream = getStream('./fixtures/sample-multipart-attachments.eml');
+    });
+
+    it('should parse multipart with attachments', async () => {
+      const result = await parseMultipart(stream);
+      expect(result.headers.length).toEqual(12);
+      expect(result.body.length).toBeGreaterThan(0);
+      expect(result.parts.length).toEqual(3);
+      expect(result.parts[1].attachment).toEqual('sha1hash.txt');
+      expect(result.parts[1].body.length).toBeGreaterThan(0);
+      expect(result.parts[2].attachment).toEqual('manifest.json');
+      expect(result.parts[2].body.length).toBeGreaterThan(0);
     });
   });
 });

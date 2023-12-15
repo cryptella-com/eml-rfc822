@@ -1,6 +1,6 @@
-import { getHeader } from '@cryptella/utils/headers';
+import { getHeader } from '../headers.js';
 import { encodeBase64ArrayBuffer } from '../base64.js';
-import type { IHeader } from '@cryptella/utils/headers';
+import type { IHeader } from '../headers.js';
 import type {
   ISerializeOptions,
   TBodyEncoder,

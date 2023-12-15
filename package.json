@@ -1,14 +1,13 @@
 {
   "name": "@cryptella/eml-rfc822",
   "description": "EML/RFC822 parser and serializer.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
   "author": {
-    "name": "Daniel Regeci; BAU Software s.r.o.",
-    "url": "https://bausw.com/"
+    "name": "Daniel Regeci"
   },
   "homepage": "https://github.com/cryptella-com/eml-rfc822",
   "scripts": {
@@ -33,6 +32,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./headers": {
+      "types": "./dist/headers.d.ts",
+      "import": "./dist/headers.js"
+    },
     "./parser": {
       "types": "./dist/parser.d.ts",
       "import": "./dist/parser.js"
@@ -52,6 +55,9 @@
   },
   "typesVersions": {
     "*": {
+      "headers": [
+        "./dist/headers"
+      ],
       "parser": [
         "./dist/parser"
       ],
@@ -65,9 +71,6 @@
         "./dist/encoders"
       ]
     }
-  },
-  "dependencies": {
-    "@cryptella/utils": "file:../utils"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

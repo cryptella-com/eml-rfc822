@@ -1,9 +1,9 @@
-import { getHeader, parseHeaders, parseHeaderValueParams } from '@cryptella/utils/headers';
+import { getHeader, parseHeaders } from '../headers.js';
 import { AB_CR_LF, AB_LF, CHAR_EM } from '../consts.js';
 import { concat, compare, decode, encode, readLine } from '../helpers.js';
 import { getBodyDecoder } from '../index.js';
-import type { IHeader } from '@cryptella/utils/headers';
-import type { IParseOptions, TBodyDecoder } from '../index.js';
+import type { IHeader } from '../headers.js';
+import type { IParseOptions, ParseCtx, TBodyDecoder } from '../index.js';
 
 export interface IMultipartDecoderOptions {
   deep?: boolean;
@@ -13,7 +13,7 @@ function parseMultipartBody(
   options: IParseOptions,
   decoderOptions: IMultipartDecoderOptions,
   boundary: Uint8Array,
-  onPart: (parsedHeaders: IHeader[], body: Uint8Array, headers: Uint8Array) => Promise<void> | void
+  onPart: (parsedHeaders: IHeader[], body: Uint8Array, headers: Uint8Array, ctx: ParseCtx) => Promise<void> | void
 ) {
   let headers = new Uint8Array();
   let body = new Uint8Array();
@@ -21,73 +21,61 @@ function parseMultipartBody(
   let readingHeaders = false;
   let readingBody = false;
   let tmp = new Uint8Array();
-  let prevBoundaries: Uint8Array[] = [];
   let decoder: TBodyDecoder | null = null;
-  return async (chunk: Uint8Array | null) => {
+  return async (chunk: Uint8Array | null, ctx: ParseCtx) => {
+    ctx.boundary = boundary;
     let lastPos = 0;
     if (chunk === null) {
       if (parsedHeaders.length) {
-        await onPart(parsedHeaders, body, headers);
+        await onPart(parsedHeaders, body, headers, ctx);
       }
       return;
     }
     tmp = concat(tmp, chunk);
     for (let { cr, cursor, line } of readLine(tmp)) {
+      const nl =  cr ? AB_CR_LF : AB_LF;
       lastPos = cursor;
       if (
         line[0] === CHAR_EM &&
         line[1] === CHAR_EM &&
         compare(line.subarray(2, boundary.length + 2), boundary)
       ) {
-        if (
-          line[line.length - 1] === CHAR_EM &&
-          line[line.length - 2] === CHAR_EM
-        ) {
-          // terminator
-          if (prevBoundaries.length) {
-            boundary = prevBoundaries.pop()!;
-          }
-        } else {
-          // start
+        const terminator = line[line.length - 1] === CHAR_EM && line[line.length - 2] === CHAR_EM;
+        if (!terminator) {
           readingHeaders = true;
         }
         if (parsedHeaders.length && readingBody) {
-          if (decoder) {
-            await decoder(null);
-          }
-          await onPart(parsedHeaders, body, headers);
+          await onPart(parsedHeaders, body, headers, ctx);
         }
         parsedHeaders = [];
         readingBody = false;
         headers = new Uint8Array();
         body = new Uint8Array();
+        if (decoder) {
+          await decoder(null, ctx);
+          ctx.boundary = boundary;
+        }
+        decoder = null;
       } else if (line.length === 0 && headers.length && !readingBody) {
-        parsedHeaders = parseHeaders(decode(headers));
+        parsedHeaders = parseHeaders(decode(headers), options.parseHeaderParams);
         if (decoderOptions?.deep !== false) {
           if (options.decoders) {
             decoder = getBodyDecoder(parsedHeaders, options);
           }
-          const contentType = getHeader(parsedHeaders, 'content-type');
-          if (contentType?.value.startsWith('multipart/')) {
-            const { params } = parseHeaderValueParams(contentType.value);
-            if (params?.boundary) {
-              prevBoundaries.push(boundary);
-              boundary = encode(params.boundary);
-            }
-          }
         } else {
-          body = concat(body, cr ? AB_CR_LF : AB_LF);
+          body = concat(body, nl);
         }
         readingBody = true;
       } else if (readingBody) {
+        body = body.length ? concat(body, nl, line) : line;
         if (decoder) {
-          await decoder(line);
-        } else {
-          body = body.length ? concat(body, cr ? AB_CR_LF : AB_LF, line) : line;
+          await decoder(concat(line, nl), ctx);
+          ctx.boundary = boundary;
         }
+
       } else if (readingHeaders) {
         headers = headers.length
-          ? concat(headers, cr ? AB_CR_LF : AB_LF, line)
+          ? concat(headers, nl, line)
           : line;
       }
     }
@@ -96,17 +84,16 @@ function parseMultipartBody(
 }
 
 export function multipartDecoder(
-  onPart: (parsedHeaders: IHeader[], body: Uint8Array, headers: Uint8Array) => Promise<void> | void,
+  onPart: (parsedHeaders: IHeader[], body: Uint8Array, headers: Uint8Array, ctx: ParseCtx) => Promise<void> | void,
   decoderOptions: IMultipartDecoderOptions = {},
 ) {
   return (headers: IHeader[], options: IParseOptions) => {
-    const contentType = getHeader(headers, 'content-type');
+    const contentType = getHeader(headers, 'content-type', true);
     if (contentType?.value.startsWith('multipart/')) {
-      const { params } = parseHeaderValueParams(contentType.value);
       return parseMultipartBody(
         options,
         decoderOptions,
-        encode(params!.boundary!),
+        encode(contentType.params!.boundary!),
         onPart,
       );
     }

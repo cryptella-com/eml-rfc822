@@ -1,6 +1,6 @@
 import { encode } from './helpers.js';
-import { serializeHeaders } from '@cryptella/utils/headers';
-import type { IHeader } from '@cryptella/utils/headers';
+import { serializeHeaders } from './headers.js';
+import type { IHeader } from './headers.js';
 
 export type TMultiPart = {
   headers?: IHeader[];
