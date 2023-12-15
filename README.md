@@ -15,6 +15,7 @@ This package offers a streaming, high-performance parser and serializer for the 
 
 ```js
 import { parse } from '@cryptella/eml-rfc822';
+import { multipartDecoder } from '@cryptella/eml-rfc822/decoders';
 
 const stream = new ReadableStream(); // get stream somehow...
 
